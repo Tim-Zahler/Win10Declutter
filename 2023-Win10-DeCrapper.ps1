@@ -24,7 +24,7 @@ If (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]:
 # Privacy Settings
 ##############
 
-# Remove THAT F-ING KEYLOGGER FROM MY SYSTEM!!!
+# Remove THAT F***ING KEYLOGGER FROM MY SYSTEM!!!!!!!
 Write-Host "Removing the Microsoft Keylogger..."
 reg delete "HKEY_LOCAL_MACHINE\SYSTEM\ControlSet001\Services\dmwappushservice" /v "DelayedAutoStart" /f
 reg add "HKEY_LOCAL_MACHINE\SYSTEM\ControlSet001\Services\dmwappushservice" /v "DelayedAutoStart" /t REG_DWORD /d "1"
@@ -133,8 +133,29 @@ Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Advertis
 Write-Host "Disable sharing mapped drives between users..."
 Remove-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Policies\System" -Name "EnableLinkedConnections"
 
+# Uninstall default Microsoft applications
+$apps = @(
+"Disney+"
+"Microsoft.Paint3D"
+"Microsoft.PCHealthCheck"
+"Microsoft.MicrosoftStickyNotes"
+"Microsoft.XboxGameOverlay"
+"Microsoft.SkypeApp"
+)
 
+ForEach ($app in $apps) {
+    $package = Get-AppxPackage -Name $app -ErrorAction SilentlyContinue
+    if ($package -ne $null) {
+        Write-Host "Uninstalling $($package.Name)..."
+        Remove-AppxPackage -Package $package.PackageFullName -AllUsers
+    } else {
+        Write-Host "$app not found, skipping..."
+    }
+}
 
+# Disable windows update seeding other computers
+Write-Output "Disable seeding of updates to other computers via Group Policies"
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\DeliveryOptimization" -Name "DODownloadMode" -Value 0
 
 
 
@@ -150,6 +171,10 @@ Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer
 # Hide Search button / box
 Write-Host "Hiding Search Box / Button..."
 Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Search" -Name "SearchboxTaskbarMode" -Type DWord -Value 0
+
+# Hide/Disable the News Section
+Write-Host "Hiding the News Section..."
+Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Feeds" -Name "ShellFeedsTaskbarViewMode" -Value 1
 
 # Disable Sticky keys prompt
 Write-Host "Disabling Sticky keys prompt..."
@@ -176,9 +201,6 @@ Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer
 Write-Host "Disabling showing what can be snapped when snapping..."
 Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' -Name "SnapToDefaultProgram" -Type DWord -Value 0
 
-# Uninstall default Microsoft applications
-Write-Host "Uninstalling default Microsoft applications..."
-Get-AppxPackage | Where-Object {$_.Publisher -eq "CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US"}
 
 # Set Photo Viewer as default for bmp, gif, jpg and png
 Write-Host "Setting Photo Viewer as default for bmp, gif, jpg, png and tif..."
@@ -203,10 +225,6 @@ Set-ItemProperty -Path "HKCR:\Applications\photoviewer.dll\shell\open" -Name "Mu
 Set-ItemProperty -Path "HKCR:\Applications\photoviewer.dll\shell\open\command" -Name "(Default)" -Type ExpandString -Value "%SystemRoot%\System32\rundll32.exe `"%ProgramFiles%\Windows Photo Viewer\PhotoViewer.dll`", ImageView_Fullscreen %1"
 Set-ItemProperty -Path "HKCR:\Applications\photoviewer.dll\shell\open\DropTarget" -Name "Clsid" -Type String -Value "{FFE2A43C-56B9-4bf5-9A79-CC6D4285608A}"
 
-# Disable windows update seeding other computers
-Write-Output "Disable seeding of updates to other computers via Group Policies"
-Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\DeliveryOptimization" -Name "DODownloadMode" -Value 0
-
 # Remove all Tiles from Start Menu
 Write-Host "Removing all Tiles from Start Menu..."
 Remove-Item -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\CloudStore\Store\Cache\DefaultAccount\*" -Recurse -Force
@@ -224,8 +242,83 @@ Write-Host "Disabling Location Tracking..."
 Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Sensor\Overrides\{BFA794E4-F964-4FDB-90F6-51056BFE4B44}" -Name "SensorPermissionState" -Type DWord -Value 0
 Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Services\lfsvc\Service\Configuration" -Name "Status" -Type DWord -Value 0
 
+# Add Powershell & CMD "Open Here" to Context Menu
+$text = @"
+Windows Registry Editor Version 5.00
+
+; Command Prompt
+
+[HKEY_CLASSES_ROOT\Directory\shell\01MenuCmd]
+"MUIVerb"="Command Prompts"
+"Icon"="cmd.exe"
+"ExtendedSubCommandsKey"="Directory\\ContextMenus\\MenuCmd"
+
+[HKEY_CLASSES_ROOT\Directory\background\shell\01MenuCmd]
+"MUIVerb"="Command Prompts"
+"Icon"="cmd.exe"
+"ExtendedSubCommandsKey"="Directory\\ContextMenus\\MenuCmd"
+
+[HKEY_CLASSES_ROOT\Directory\ContextMenus\MenuCmd\shell\open]
+"MUIVerb"="Command Prompt"
+"Icon"="cmd.exe"
+
+[HKEY_CLASSES_ROOT\Directory\ContextMenus\MenuCmd\shell\open\command]
+@="cmd.exe /s /k pushd \"%V\""
+
+[HKEY_CLASSES_ROOT\Directory\ContextMenus\MenuCmd\shell\runas]
+"MUIVerb"="Command Prompt Elevated"
+"Icon"="cmd.exe"
+"HasLUAShield"=""
+
+[HKEY_CLASSES_ROOT\Directory\ContextMenus\MenuCmd\shell\runas\command]
+@="cmd.exe /s /k pushd \"%V\""
 
 
+; PowerShell
+
+[HKEY_CLASSES_ROOT\Directory\shell\02MenuPowerShell]
+"MUIVerb"="PowerShell Prompts"
+"Icon"="powershell.exe"
+"ExtendedSubCommandsKey"="Directory\\ContextMenus\\MenuPowerShell"
+
+[HKEY_CLASSES_ROOT\Directory\background\shell\02MenuPowerShell]
+"MUIVerb"="PowerShell Prompts"
+"Icon"="powershell.exe"
+"ExtendedSubCommandsKey"="Directory\\ContextMenus\\MenuPowerShell"
+
+[HKEY_CLASSES_ROOT\Directory\ContextMenus\MenuPowerShell\shell\open]
+"MUIVerb"="PowerShell"
+"Icon"="powershell.exe"
+
+[HKEY_CLASSES_ROOT\Directory\ContextMenus\MenuPowerShell\shell\open\command]
+@="powershell.exe -noexit -command Set-Location '%V'"
+
+[HKEY_CLASSES_ROOT\Directory\ContextMenus\MenuPowerShell\shell\runas]
+"MUIVerb"="PowerShell Elevated"
+"Icon"="powershell.exe"
+"HasLUAShield"=""
+
+[HKEY_CLASSES_ROOT\Directory\ContextMenus\MenuPowerShell\shell\runas\command]
+@="powershell.exe -noexit -command Set-Location '%V'"
+
+
+; Ensure OS Entries are on the Extended Menu (Shift-Right Click)
+
+[HKEY_CLASSES_ROOT\Directory\shell\cmd]
+"Extended"=""
+
+[HKEY_CLASSES_ROOT\Directory\background\shell\cmd]
+"Extended"=""
+
+[HKEY_CLASSES_ROOT\Directory\shell\Powershell]
+"Extended"=""
+
+[HKEY_CLASSES_ROOT\Directory\background\shell\Powershell]
+"Extended"=""
+"@
+
+Set-Content -Path "MenuGit.reg" -Value $text -Force
+Start-Process "regedit.exe" "/s MenuGit.reg"
 
 
 
@@ -249,6 +342,9 @@ New-PSDrive -Name "A" -Root "\\.\CDROM" -PSProvider FileSystem
 Write-Host "Activating Network Discovery to mount Network Shares..."
 Set-NetFirewallProfile -Profile Domain,Private -Enabled True
 
+# Set Notifications to Alerts only
+Write-Host "Setting Notifications to Alerts only..."
+Set-ItemProperty -Path "HKCU:\Control Panel\Notifications" -Name "ToastEnabled" -Value 1
 
 
 
@@ -303,6 +399,8 @@ Write-Host "Trying to configure Teamviewer with default Settings..."
 # Install VLC Media Player
 Write-Host "Installing VLC Media Player..."
 Invoke-WebRequest -Uri https://get.videolan.org/vlc/3.0.11/win64/vlc-3.0.11-win64.exe -OutFile vlc.exe; Start-Process -FilePath vlc.exe -ArgumentList '/S' -Wait
+
+
 
 #########################
 #
